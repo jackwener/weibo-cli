@@ -205,11 +205,9 @@ mkdir -p .agents/skills
 git clone git@github.com:jackwener/weibo-cli.git .agents/skills/weibo-cli
 ```
 
-#### OpenClaw / ClawHub
+#### ~~OpenClaw / ClawHub~~ (Deprecated)
 
-```bash
-clawhub install weibo-cli
-```
+> ⚠️ ClawHub install method is deprecated and no longer supported. Use [Skills CLI](#skills-cli-recommended) or Manual Install above.
 
 ---
 
