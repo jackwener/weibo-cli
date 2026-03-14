@@ -186,15 +186,23 @@ weibo_cli/
 
 weibo-cli ships with a [`SKILL.md`](./SKILL.md) so AI agents can execute common Weibo workflows.
 
-#### Claude Code / Antigravity
+#### [Skills CLI](https://github.com/vercel-labs/skills) (Recommended)
+
+```bash
+npx skills add jackwener/weibo-cli
+```
+
+| Flag | Description |
+| --- | --- |
+| `-g` | Install globally (user-level, shared across projects) |
+| `-a claude-code` | Target a specific agent |
+| `-y` | Non-interactive mode |
+
+#### Manual Install
 
 ```bash
 mkdir -p .agents/skills
 git clone git@github.com:jackwener/weibo-cli.git .agents/skills/weibo-cli
-
-# Or copy SKILL.md only
-curl -o .agents/skills/weibo-cli/SKILL.md \
-  https://raw.githubusercontent.com/jackwener/weibo-cli/main/SKILL.md
 ```
 
 #### OpenClaw / ClawHub
@@ -288,6 +296,20 @@ weibo following 1699432410             # 用户关注列表
 - 请求较慢是正常的 — 内置高斯随机延迟（~1s）是为了模拟人类浏览行为，避免触发风控
 
 ### 作为 AI Agent Skill 使用
+
+#### [Skills CLI](https://github.com/vercel-labs/skills)（推荐）
+
+```bash
+npx skills add jackwener/weibo-cli
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `-g` | 全局安装（用户级别，跨项目共享） |
+| `-a claude-code` | 指定目标 Agent |
+| `-y` | 非交互模式 |
+
+#### 手动安装
 
 ```bash
 mkdir -p .agents/skills
