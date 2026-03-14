@@ -1,0 +1,56 @@
+[project]
+name = "weibo-cli"
+version = "0.1.0"
+description = "A CLI for Weibo (微博) — browse hot topics, search users, read timelines from the terminal"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "jackwener", email = "jakevingoo@gmail.com" }]
+keywords = ["weibo", "sina", "cli", "terminal", "social-media", "microblog"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Communications",
+]
+dependencies = [
+    "click>=8.0",
+    "rich>=13.0",
+    "httpx>=0.27",
+    "browser-cookie3>=0.19",
+    "qrcode>=7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.11.0",
+]
+yaml = [
+    "pyyaml>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jackwener/weibo-cli"
+Repository = "https://github.com/jackwener/weibo-cli"
+Issues = "https://github.com/jackwener/weibo-cli/issues"
+
+[project.scripts]
+weibo = "weibo_cli.cli:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["weibo_cli"]
+
+[tool.pytest.ini_options]
+markers = [
+    "smoke: end-to-end tests requiring live cookies (deselect with '-m \"not smoke\"')",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 140
