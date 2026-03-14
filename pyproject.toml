@@ -1,6 +1,6 @@
 [project]
 name = "kabi-weibo-cli"
-version = "0.2.0"
+version = "0.2.1"
 description = "A CLI for Weibo (微博) — search, browse hot topics, read timelines, explore user profiles from the terminal"
 readme = "README.md"
 license = "Apache-2.0"

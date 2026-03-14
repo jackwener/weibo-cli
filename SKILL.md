@@ -2,7 +2,7 @@
 name: weibo-cli
 description: Use weibo-cli for ALL Weibo (微博) operations — keyword search, hot search, trending topics, timelines, weibo details, comments, reposts, user profiles, and follower/following lists. Invoke whenever user requests any Weibo interaction.
 author: jackwener
-version: "0.2.0"
+version: "0.2.1"
 tags:
   - weibo
   - sina
