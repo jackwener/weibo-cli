@@ -28,13 +28,13 @@ def test_version():
     runner = CliRunner()
     result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.output
+    assert "0.2.0" in result.output
 
 
 EXPECTED_COMMANDS = [
     "login", "logout", "status", "me",
-    "hot", "feed", "detail", "comments", "trending",
-    "profile", "weibos", "following",
+    "hot", "feed", "detail", "comments", "trending", "search",
+    "profile", "weibos", "following", "followers", "reposts", "home",
 ]
 
 
@@ -97,9 +97,13 @@ def test_all_error_codes():
     ("detail", "详情"),
     ("comments", "评论"),
     ("trending", "趋势"),
+    ("search", "搜索"),
     ("profile", "用户资料"),
     ("weibos", "微博列表"),
     ("following", "关注列表"),
+    ("followers", "粉丝列表"),
+    ("reposts", "转发"),
+    ("home", "关注者"),
 ])
 def test_command_help_text(cmd, expected_text):
     """Each command has appropriate help description."""
@@ -108,7 +112,7 @@ def test_command_help_text(cmd, expected_text):
     assert expected_text in result.output
 
 
-@pytest.mark.parametrize("cmd", ["hot", "feed", "detail", "comments", "trending", "profile", "weibos", "following"])
+@pytest.mark.parametrize("cmd", ["hot", "feed", "detail", "comments", "trending", "search", "profile", "weibos", "following", "followers", "reposts", "home"])
 def test_json_option_available(cmd):
     """All data commands support --json flag."""
     runner = CliRunner()

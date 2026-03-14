@@ -4,7 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/kabi-weibo-cli.svg)](https://pypi.org/project/kabi-weibo-cli/)
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)](https://pypi.org/project/kabi-weibo-cli/)
 
-A CLI for Weibo (微博) — browse hot topics, read timelines, and explore user profiles from the terminal 🐦
+A CLI for Weibo (微博) — search, browse hot topics, read timelines, and explore user profiles from the terminal 🐦
 
 [English](#english) | [中文](#中文)
 
@@ -23,12 +23,16 @@ A CLI for Weibo (微博) — browse hot topics, read timelines, and explore user
 **Read:**
 - Hot search: browse real-time trending topics and hashtags
 - Hot timeline: browse the trending feed
+- Home feed: browse your following timeline
+- Search: find weibos by keyword
 - Search trends: real-time trending sidebar data
 - Weibo detail: view a weibo with full text, media, and stats
 - Comments: read comments on any weibo
+- Reposts: view forwards/reposts of any weibo
 - User profiles: view user info, stats, and bio
 - User weibos: browse a user's published weibos
 - Following: view a user's following list
+- Followers: view a user's follower list
 - Structured output: export any data as JSON or YAML for scripting and AI agent integration
 
 > **AI Agent Tip:** Prefer `--yaml` for structured output unless strict JSON is required. Non-TTY stdout defaults to YAML automatically. Use `--count` to limit results.
@@ -73,6 +77,9 @@ weibo login
 # Browse hot search
 weibo hot
 
+# Search weibos by keyword
+weibo search "科技"
+
 # View hot timeline
 weibo feed
 
@@ -85,36 +92,50 @@ weibo detail Qw06Kd98p
 ```bash
 # ─── Auth ─────────────────────────────────────────
 weibo login                            # Extract cookies from browser / QR login
+weibo login --qrcode                   # QR code login directly (skip browser)
+weibo login --cookie-source chrome     # Extract from specific browser
 weibo logout                           # Clear saved credentials
 weibo status                           # Check login status
 weibo me                               # Show current user profile
 
-# ─── Hot & Trending ──────────────────────────────
+# ─── Hot & Trending ────────────────────────────
 weibo hot                              # Hot search list (50+ topics)
+weibo hot --count 10                   # Limit results
 weibo hot --json                       # JSON output
 weibo trending                         # Real-time search trends
+weibo trending --count 10              # Limit results
 weibo trending --yaml                  # YAML output
 
-# ─── Feed ────────────────────────────────────────
+# ─── Search ─────────────────────────────────────
+weibo search <keyword>                 # Search weibos by keyword
+weibo search "科技" --count 5            # Limit results
+weibo search "科技" --page 2 --json     # Paginate + JSON output
+
+# ─── Feed ───────────────────────────────────────
 weibo feed                             # Hot timeline
 weibo feed --count 5                   # Limit results
 weibo feed --json                      # JSON output
+weibo home                             # Following timeline
+weibo home --count 10                  # Limit count
 
-# ─── Weibo Detail ────────────────────────────────
+# ─── Weibo Detail ───────────────────────────────
 weibo detail <mblogid>                 # View weibo with full stats
 weibo detail Qw06Kd98p --json          # JSON output
 
-# ─── Comments ────────────────────────────────────
+# ─── Comments & Reposts ─────────────────────────
 weibo comments <mblogid>               # View comments
 weibo comments Qw06Kd98p --count 10    # Limit count
 weibo comments Qw06Kd98p --json        # JSON output
+weibo reposts <mblogid>                # View reposts/forwards
+weibo reposts Qw06Kd98p --count 5      # Limit count
 
-# ─── User ────────────────────────────────────────
+# ─── User ───────────────────────────────────────
 weibo profile <uid>                    # User profile
 weibo profile 1699432410 --json        # JSON output
 weibo weibos <uid>                     # User's weibos
 weibo weibos 1699432410 --count 5      # Limit count
 weibo following <uid>                  # User's following list
+weibo followers <uid>                  # User's follower list
 ```
 
 ### Authentication
@@ -170,16 +191,16 @@ uv run pytest tests/ -v -m smoke
 ```text
 weibo_cli/
 ├── __init__.py
-├── cli.py             # Click entry point (12 commands)
-├── client.py          # WeiboClient (14 API methods, rate-limit, retry)
+├── cli.py             # Click entry point (16 commands)
+├── client.py          # WeiboClient (17 API methods, rate-limit, retry)
 ├── auth.py            # QR login + browser-cookie3 + credential persistence
 ├── constants.py       # API endpoints, headers, Chrome 145 UA
 ├── exceptions.py      # WeiboApiError hierarchy (6 error types)
 └── commands/
-    ├── _common.py     # structured_output_options, handle_command
+    ├── _common.py     # structured_output_options, handle_command, strip_html, format_count
     ├── auth.py        # login/logout/status/me
-    ├── search.py      # hot/feed/detail/comments/trending
-    └── personal.py    # profile/weibos/following
+    ├── search.py      # hot/feed/detail/comments/trending/search
+    └── personal.py    # profile/weibos/following/followers/reposts/home
 ```
 
 ### Use as AI Agent Skill
@@ -218,12 +239,16 @@ git clone git@github.com:jackwener/weibo-cli.git .agents/skills/weibo-cli
 **阅读:**
 - 🔥 热搜：实时热门话题和标签
 - 📰 热门 Feed：热门时间线
+- 🏠 关注者 Feed：关注用户的时间线
+- 🔍 搜索：按关键词搜索微博
 - 📈 搜索趋势：实时搜索趋势侧边栏
 - 📝 微博详情：查看完整正文、媒体和统计数据
 - 💬 评论：查看微博评论
+- 🔁 转发：查看微博转发
 - 👤 用户资料：用户信息和统计
 - 📋 用户微博：浏览用户已发布的微博列表
 - 👥 关注列表：查看用户的关注列表
+- 👥 粉丝列表：查看用户的粉丝列表
 - 📊 结构化输出：支持 JSON 和 YAML，便于脚本和 AI Agent 集成
 
 > **AI Agent 提示：** 需要结构化输出时优先使用 `--yaml`，除非下游必须是 JSON。stdout 不是 TTY 时默认输出 YAML。
@@ -264,27 +289,38 @@ uv sync
 ```bash
 # 认证
 weibo login                            # 从浏览器提取 Cookie / 二维码扫码
+weibo login --qrcode                   # 直接二维码扫码登录
+weibo login --cookie-source chrome     # 指定浏览器提取
 weibo logout                           # 清除已保存凭证
 weibo status                           # 检查登录状态
 weibo me                               # 查看当前用户信息
 
 # 热搜
 weibo hot                              # 热搜列表（50+ 条）
+weibo hot --count 10                   # 限制数量
 weibo hot --json                       # JSON 输出
 weibo trending                         # 搜索趋势
+
+# 搜索
+weibo search "科技"                     # 按关键词搜索微博
+weibo search "科技" --count 5           # 限制数量
+weibo search "科技" --page 2            # 翻页
 
 # Feed
 weibo feed                             # 热门时间线
 weibo feed --count 5                   # 限制数量
+weibo home                             # 关注者时间线
 
 # 微博详情与评论
 weibo detail Qw06Kd98p                 # 查看微博
 weibo comments Qw06Kd98p               # 查看评论
+weibo reposts Qw06Kd98p                # 查看转发
 
 # 用户
 weibo profile 1699432410               # 用户资料
 weibo weibos 1699432410                # 用户微博列表
 weibo following 1699432410             # 用户关注列表
+weibo followers 1699432410             # 用户粉丝列表
 ```
 
 ### 常见问题

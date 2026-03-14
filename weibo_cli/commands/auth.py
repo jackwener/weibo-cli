@@ -68,6 +68,8 @@ def logout():
 @structured_output_options
 def status(as_json, as_yaml):
     """查看当前登录状态"""
+    import sys
+
     from ..auth import get_credential
 
     cred = get_credential()
@@ -75,8 +77,14 @@ def status(as_json, as_yaml):
         "authenticated": cred is not None,
         "cookie_count": len(cred.cookies) if cred else 0,
     }
-    if as_json or not __import__("sys").stdout.isatty():
+    if as_json:
         click.echo(json.dumps(info, indent=2))
+    elif as_yaml or not sys.stdout.isatty():
+        try:
+            import yaml
+            click.echo(yaml.dump(info, allow_unicode=True, default_flow_style=False))
+        except ImportError:
+            click.echo(json.dumps(info, indent=2))
     else:
         if cred:
             console.print(f"[green]✅ 已登录[/green] ({len(cred.cookies)} cookies)")
@@ -110,19 +118,21 @@ def me(as_json, as_yaml):
         text = "\n".join(lines) if lines else "无法获取个人资料"
         console.print(Panel(text, title="👤 个人资料", border_style="cyan"))
 
-    # Weibo's /ajax/profile/info needs uid, but we can try /ajax/profile/me
     def _action(client):
-        # Try the ME endpoint first
+        # Try the direct ME endpoint first
         try:
             data = client._get("/ajax/profile/me", action="个人资料")
             return data
         except Exception:
             pass
-        # Fallback: get config to find current uid
+        # Fallback: get config to find current UID, then get profile
         try:
-            client._get("/ajax/side/hotSearch", action="热搜")
-            return {"error": "需要先逆向个人中心API"}
+            config = client.get_config()
+            uid = str(config.get("uid", config.get("user", {}).get("id", "")))
+            if uid:
+                return client.get_profile(uid)
         except Exception:
-            return {"error": "无法获取个人资料"}
+            pass
+        return {"error": "无法获取个人资料，请确认已登录"}
 
     handle_command(cred, action=_action, render=_render, as_json=as_json, as_yaml=as_yaml)

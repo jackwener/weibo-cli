@@ -39,6 +39,11 @@ REPOST_TIMELINE_URL = "/ajax/statuses/repostTimeline"  # GET → reposts for a w
 
 # ── Social ──────────────────────────────────────────────────────────
 FRIENDS_URL = "/ajax/friendships/friends"        # GET ?uid= → following list
+FOLLOWERS_URL = "/ajax/friendships/friends"      # GET ?uid=&relate=fans → follower list
+
+# ── Search ──────────────────────────────────────────────────────────
+MOBILE_BASE_URL = "https://m.weibo.cn"
+MOBILE_SEARCH_URL = "/api/container/getIndex"    # GET → mobile search (keyword)
 
 # ── Config ──────────────────────────────────────────────────────────
 GET_CONFIG_URL = "/ajax/config/get_config"       # GET → app config (auth)

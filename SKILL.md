@@ -1,8 +1,8 @@
 ---
 name: weibo-cli
-description: Use weibo-cli for ALL Weibo (微博) operations — browsing hot search, trending topics, hot timeline, weibo details, comments, user profiles, and following lists. Invoke whenever user requests any Weibo interaction.
+description: Use weibo-cli for ALL Weibo (微博) operations — keyword search, hot search, trending topics, timelines, weibo details, comments, reposts, user profiles, and follower/following lists. Invoke whenever user requests any Weibo interaction.
 author: jackwener
-version: "0.1.0"
+version: "0.2.0"
 tags:
   - weibo
   - sina
@@ -45,6 +45,7 @@ Ensure user is logged into weibo.com in any supported browser (Chrome, Arc, Edge
 
 ```bash
 weibo login
+weibo login --qrcode          # QR code login directly (skip browser cookies)
 weibo status
 ```
 
@@ -88,20 +89,26 @@ Non-TTY stdout defaults to YAML automatically.
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `weibo hot` | Hot search list (50+ topics) | `weibo hot --json` |
-| `weibo trending` | Real-time search trends | `weibo trending --yaml` |
+| `weibo hot` | Hot search list (50+ topics) | `weibo hot --count 10 --json` |
+| `weibo trending` | Real-time search trends | `weibo trending --count 10 --yaml` |
+| `weibo search <keyword>` | Search weibos by keyword | `weibo search "科技" --count 5 --json` |
 | `weibo feed` | Hot timeline | `weibo feed --count 5 --json` |
+| `weibo home` | Following timeline | `weibo home --count 10 --json` |
 | `weibo detail <mblogid>` | View weibo with stats | `weibo detail Qw06Kd98p --json` |
 | `weibo comments <mblogid>` | View comments | `weibo comments Qw06Kd98p --count 10` |
+| `weibo reposts <mblogid>` | View reposts/forwards | `weibo reposts Qw06Kd98p --count 5` |
 | `weibo profile <uid>` | User profile | `weibo profile 1699432410 --json` |
 | `weibo weibos <uid>` | User's published weibos | `weibo weibos 1699432410 --count 5` |
 | `weibo following <uid>` | User's following list | `weibo following 1699432410` |
+| `weibo followers <uid>` | User's follower list | `weibo followers 1699432410` |
 
 ### Account
 
 | Command | Description |
 |---------|-------------|
 | `weibo login` | Extract cookies from browser / QR login |
+| `weibo login --qrcode` | QR code login directly (skip browser) |
+| `weibo login --cookie-source <browser>` | Extract from specific browser |
 | `weibo logout` | Clear saved credentials |
 | `weibo status` | Check authentication status |
 | `weibo me` | Show current user profile |
@@ -156,7 +163,6 @@ Structured error codes returned in CLI output:
 
 - **Read-only** — no posting, liking, or retweeting
 - **No DMs** — cannot access private messages
-- **No search** — keyword search not yet implemented
 - **Single account** — one set of credentials at a time
 - **Rate limited** — built-in Gaussian jitter delay (~1s) between requests
 

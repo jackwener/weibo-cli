@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from typing import Any
 
@@ -14,6 +15,25 @@ from ..client import WeiboClient
 from ..exceptions import WeiboApiError, SessionExpiredError, error_code_for_exception
 
 console = Console()
+
+
+# ── Shared formatters ───────────────────────────────────────────────
+
+
+def strip_html(text: str) -> str:
+    """Remove HTML tags from text."""
+    return re.sub(r"<[^>]+>", "", text or "")
+
+
+def format_count(n: int | str) -> str:
+    """Format large numbers with 万."""
+    try:
+        n = int(n)
+    except (ValueError, TypeError):
+        return str(n)
+    if n >= 10000:
+        return f"{n / 10000:.1f}万"
+    return str(n)
 
 
 def require_auth() -> Credential:

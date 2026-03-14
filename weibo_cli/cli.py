@@ -2,9 +2,10 @@
 
 Usage:
     weibo login / status / logout / me
-    weibo hot / feed / trending
-    weibo detail <mblogid> / comments <mblogid>
-    weibo profile <uid> / weibos <uid> / following <uid>
+    weibo hot / feed / trending / search <keyword>
+    weibo detail <mblogid> / comments <mblogid> / reposts <mblogid>
+    weibo profile <uid> / weibos <uid> / following <uid> / followers <uid>
+    weibo home
 """
 
 from __future__ import annotations
@@ -44,13 +45,18 @@ cli.add_command(search.feed)
 cli.add_command(search.detail)
 cli.add_command(search.comments)
 cli.add_command(search.trending)
+cli.add_command(search.search)
 
 # ─── Personal / Profile commands ─────────────────────────────────────
 
 cli.add_command(personal.profile)
 cli.add_command(personal.weibos)
 cli.add_command(personal.following)
+cli.add_command(personal.followers)
+cli.add_command(personal.reposts)
+cli.add_command(personal.home)
 
 
 if __name__ == "__main__":
     cli()
+
