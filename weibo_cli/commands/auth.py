@@ -11,10 +11,35 @@ from ._common import console, handle_command, require_auth, structured_output_op
 
 
 @click.command()
-def login():
-    """扫码登录微博"""
-    from ..auth import get_credential, qr_login
+@click.option("--qrcode", is_flag=True, help="直接使用二维码扫码登录（跳过浏览器 Cookie 提取）")
+@click.option("--cookie-source", type=str, default=None, help="指定浏览器 (chrome/firefox/edge/brave/arc/...)")
+def login(qrcode, cookie_source):
+    """登录微博（自动提取浏览器 Cookie 或 --qrcode 扫码）"""
+    from ..auth import extract_browser_credential, get_credential, qr_login
 
+    if qrcode:
+        # Skip browser cookies, go straight to QR login
+        try:
+            cred = qr_login()
+            if cred:
+                console.print("[green]✅ 登录成功！[/green]")
+            else:
+                console.print("[red]❌ 登录失败[/red]")
+        except Exception as e:
+            console.print(f"[red]❌ 登录失败: {e}[/red]")
+        return
+
+    if cookie_source:
+        # Try specific browser only
+        cred = extract_browser_credential(cookie_source=cookie_source)
+        if cred:
+            console.print(f"[green]✅ 已从 {cookie_source} 提取 Cookie 并登录[/green]")
+        else:
+            console.print(f"[yellow]⚠️  未在 {cookie_source} 找到有效 Cookie[/yellow]")
+            console.print("  提示: 使用 [bold]weibo login --qrcode[/bold] 扫码登录")
+        return
+
+    # Default: try saved → browser → QR
     cred = get_credential()
     if cred:
         console.print("[green]✅ 已登录[/green] (如需重新登录请先执行 weibo logout)")
