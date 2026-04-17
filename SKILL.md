@@ -115,67 +115,28 @@ Non-TTY stdout defaults to YAML automatically.
 
 ## Agent Workflow Examples
 
-### Browse hot topics and read details
+See [references/agent-workflows.md](references/agent-workflows.md) for multi-step workflow recipes (hot topic browsing, user analysis, daily monitoring).
+
+Quick example — browse hot topics and read details:
 
 ```bash
-# Get hot search topics
 MBLOG=$(weibo hot --json | jq -r '.realtime[0].mblog_id // empty')
-# Read a specific weibo
-weibo detail Qw06Kd98p --json | jq '{text: .text_raw, likes: .attitudes_count, comments: .comments_count}'
-```
-
-### Analyze user profile
-
-```bash
-weibo profile 1699432410 --json | jq '.user | {name: .screen_name, followers: .followers_count, posts: .statuses_count}'
-weibo weibos 1699432410 --count 3 --json
-```
-
-### Read comments on a weibo
-
-```bash
-weibo comments Qw06Kd98p --json | jq '.data[:5] | .[].text_raw'
-```
-
-### Daily monitoring workflow
-
-```bash
-# Top 10 hot topics
-weibo hot --json | jq '.realtime[:10] | .[] | {rank, word, num}'
-
-# Trending sidebar
-weibo trending --yaml
-
-# Hot feed
-weibo feed --count 5 --json
+weibo detail "$MBLOG" --json | jq '{text: .text_raw, likes: .attitudes_count, comments: .comments_count}'
 ```
 
 ## Error Codes
 
-Structured error codes returned in CLI output:
 - `not_authenticated` — cookies expired or missing
 - `rate_limited` — too many requests
 - `invalid_params` — missing or invalid parameters
 - `qr_expired` — QR code has expired
 - `api_error` — upstream Weibo API error
 
-## Limitations
+## Constraints
 
-- **Read-only** — no posting, liking, or retweeting
-- **No DMs** — cannot access private messages
+- **Read-only** — no posting, liking, or retweeting; no DMs
 - **Single account** — one set of credentials at a time
-- **Rate limited** — built-in Gaussian jitter delay (~1s) between requests
-
-## Anti-Detection Notes for Agents
-
-- **Do NOT parallelize requests** — the built-in rate-limit delay exists for account safety
-- **Batch operations**: when doing bulk work (e.g., reading many profiles), add delays between CLI calls
-- **Session stability**: all requests share consistent Chrome 145 headers per session
-
-## Safety Notes
-
-- Do not ask users to share raw cookie values in chat logs.
-- Prefer local browser cookie extraction over manual secret copy/paste.
-- If auth fails, ask the user to re-login via `weibo login`.
-- Agent should treat cookie values as secrets (do not echo to stdout unnecessarily).
-- Built-in rate-limit delay protects accounts; do not bypass it.
+- **Do NOT parallelize requests** — built-in Gaussian jitter delay (~1s) protects accounts
+- **Batch operations**: add delays between CLI calls when reading many profiles
+- **Treat cookies as secrets** — never echo values to stdout or ask users to share them in chat
+- If auth fails, guide user to re-login via `weibo login`
