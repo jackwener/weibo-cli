@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import click
 from rich.panel import Panel
@@ -13,20 +14,28 @@ from ._common import console, handle_command, require_auth, structured_output_op
 @click.command()
 @click.option("--qrcode", is_flag=True, help="直接使用二维码扫码登录（跳过浏览器 Cookie 提取）")
 @click.option("--cookie-source", type=str, default=None, help="指定浏览器 (chrome/firefox/edge/brave/arc/...)")
-def login(qrcode, cookie_source):
+@click.option("--qr-output", type=click.Path(path_type=Path, dir_okay=False), help="将高清二维码保存到指定 SVG 文件")
+@click.option("--open-qrcode", is_flag=True, help="使用默认浏览器打开高清二维码")
+def login(qrcode, cookie_source, qr_output, open_qrcode):
     """登录微博（自动提取浏览器 Cookie 或 --qrcode 扫码）"""
     from ..auth import extract_browser_credential, get_credential, qr_login
+
+    if not qrcode and (qr_output or open_qrcode):
+        raise click.UsageError("--qr-output and --open-qrcode require --qrcode")
 
     if qrcode:
         # Skip browser cookies, go straight to QR login
         try:
-            cred = qr_login()
+            cred = qr_login(
+                qr_output=qr_output,
+                open_qrcode=open_qrcode,
+            )
             if cred:
                 console.print("[green]✅ 登录成功！[/green]")
             else:
                 console.print("[red]❌ 登录失败[/red]")
-        except Exception as e:
-            console.print(f"[red]❌ 登录失败: {e}[/red]")
+        except Exception:
+            console.print("[red]❌ 登录失败，请使用 -v 查看安全日志[/red]")
         return
 
     if cookie_source:
@@ -51,8 +60,8 @@ def login(qrcode, cookie_source):
             console.print("[green]✅ 登录成功！[/green]")
         else:
             console.print("[red]❌ 登录失败[/red]")
-    except Exception as e:
-        console.print(f"[red]❌ 登录失败: {e}[/red]")
+    except Exception:
+        console.print("[red]❌ 登录失败，请使用 -v 查看安全日志[/red]")
 
 
 @click.command()

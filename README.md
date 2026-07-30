@@ -39,7 +39,7 @@ A CLI for Weibo (微博) — search, browse hot topics, read timelines, and expl
 
 **Auth & Anti-Detection:**
 - Cookie auth: auto-extract from Arc/Chrome/Edge/Firefox/Brave/Chromium/Opera/Vivaldi
-- QR code login: terminal-rendered QR code for Weibo App scan
+- QR code login: terminal QR plus a scannable SVG fallback for the Weibo App
 - Credential persistence: auto-save to `~/.config/weibo-cli/credential.json` with 7-day TTL
 - Anti-detection: Chrome 145 User-Agent, Gaussian jitter, exponential backoff
 - Session auto-refresh: stale credentials trigger browser cookie re-extraction
@@ -93,6 +93,9 @@ weibo detail Qw06Kd98p
 # ─── Auth ─────────────────────────────────────────
 weibo login                            # Extract cookies from browser / QR login
 weibo login --qrcode                   # QR code login directly (skip browser)
+weibo login --qrcode --open-qrcode     # Open a crisp SVG QR in the default browser
+weibo login --qrcode --qr-output ~/Downloads/weibo-login.svg
+                                       # Save the SVG QR at a persistent path
 weibo login --cookie-source chrome     # Extract from specific browser
 weibo logout                           # Clear saved credentials
 weibo status                           # Check login status
@@ -144,7 +147,7 @@ weibo-cli uses this auth priority:
 
 1. **Saved credentials** — loads from `~/.config/weibo-cli/credential.json`
 2. **Browser cookies** (recommended) — auto-extract from Arc/Chrome/Edge/Firefox/Brave/Chromium/Opera/Vivaldi/Safari/LibreWolf
-3. **QR code login** — terminal QR code, scan with Weibo App
+3. **QR code login** — terminal QR plus an SVG fallback, scan with Weibo App
 
 Browser extraction is recommended — it forwards ALL Weibo cookies and is closest to normal browser traffic.
 
@@ -154,6 +157,7 @@ Cookie TTL is **7 days** by default. After expiry, the client automatically atte
 
 - `⚠️ 未登录` — Run `weibo login` to authenticate
 - `会话已过期` — Cookie expired, run `weibo logout && weibo login`
+- Terminal QR code cannot be recognized — run `weibo login --qrcode --open-qrcode`, or save it with `--qr-output PATH` and open the SVG manually. The default temporary SVG is removed when the login attempt ends.
 - `Unable to get key for cookie decryption` (macOS Keychain):
   - **SSH sessions**: `security unlock-keychain ~/Library/Keychains/login.keychain-db`
   - **Local terminal**: Open **Keychain Access** → search **"Chrome Safe Storage"** → **Access Control** → add Terminal → **Save**
@@ -255,7 +259,7 @@ git clone git@github.com:jackwener/weibo-cli.git .agents/skills/weibo-cli
 
 **认证与反风控:**
 - Cookie 认证：支持 Arc/Chrome/Edge/Firefox/Brave 等 10+ 浏览器自动提取
-- 二维码登录：终端渲染二维码，用微博 APP 扫码
+- 二维码登录：保留终端二维码，并提供清晰的 SVG 文件供微博 APP 扫码
 - 凭证持久化：自动保存到 `~/.config/weibo-cli/credential.json`，7 天 TTL
 - 反检测：Chrome 145 User-Agent、高斯抖动延迟、指数退避重试
 - 会话自动刷新：过期凭证自动触发浏览器 Cookie 重提取
@@ -290,6 +294,9 @@ uv sync
 # 认证
 weibo login                            # 从浏览器提取 Cookie / 二维码扫码
 weibo login --qrcode                   # 直接二维码扫码登录
+weibo login --qrcode --open-qrcode     # 在默认浏览器打开清晰 SVG 二维码
+weibo login --qrcode --qr-output ~/Downloads/weibo-login.svg
+                                       # 将 SVG 二维码保存到指定位置
 weibo login --cookie-source chrome     # 指定浏览器提取
 weibo logout                           # 清除已保存凭证
 weibo status                           # 检查登录状态
@@ -327,6 +334,7 @@ weibo followers 1699432410             # 用户粉丝列表
 
 - `⚠️ 未登录` — 执行 `weibo login` 认证
 - `会话已过期` — Cookie 过期，执行 `weibo logout && weibo login`
+- 终端二维码无法识别 — 执行 `weibo login --qrcode --open-qrcode`，或用 `--qr-output PATH` 保存后手动打开 SVG。默认临时 SVG 会在本次登录结束时删除。
 - 请求较慢是正常的 — 内置高斯随机延迟（~1s）是为了模拟人类浏览行为，避免触发风控
 
 ### 作为 AI Agent Skill 使用
