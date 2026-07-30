@@ -24,6 +24,76 @@ def test_help():
     assert "Weibo CLI" in result.output
 
 
+def test_login_help_includes_qr_svg_options():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["login", "--help"])
+    assert result.exit_code == 0
+    assert "--open-qrcode" in result.output
+    assert "--qr-output" in result.output
+
+
+def test_login_qrcode_forwards_svg_options(tmp_path, monkeypatch):
+    from weibo_cli.auth import Credential
+
+    captured = {}
+
+    def fake_qr_login(**kwargs):
+        captured.update(kwargs)
+        return Credential({"SUB": "test"})
+
+    monkeypatch.setattr("weibo_cli.auth.qr_login", fake_qr_login)
+    output_path = tmp_path / "weibo-login.svg"
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "login",
+            "--qrcode",
+            "--open-qrcode",
+            "--qr-output",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured == {
+        "qr_output": output_path,
+        "open_qrcode": True,
+    }
+
+
+def test_login_qrcode_does_not_print_sensitive_exception_details(monkeypatch):
+    def fail_login(**kwargs):
+        raise RuntimeError("request failed with qrid=secret-qrid-value")
+
+    monkeypatch.setattr("weibo_cli.auth.qr_login", fail_login)
+
+    result = CliRunner().invoke(cli, ["login", "--qrcode"])
+
+    assert result.exit_code == 0
+    assert "登录失败" in result.output
+    assert "secret-qrid-value" not in result.output
+    assert "qrid=" not in result.output
+
+
+@pytest.mark.parametrize("option", ["--open-qrcode", "--qr-output"])
+def test_qr_svg_options_require_qrcode(option, tmp_path, monkeypatch):
+    from weibo_cli.auth import Credential
+
+    monkeypatch.setattr(
+        "weibo_cli.auth.get_credential",
+        lambda: Credential({"SUB": "test"}),
+    )
+    args = ["login", option]
+    if option == "--qr-output":
+        args.append(str(tmp_path / "weibo-login.svg"))
+
+    result = CliRunner().invoke(cli, args)
+
+    assert result.exit_code == 2
+    assert "require --qrcode" in result.output
+
+
 def test_version():
     runner = CliRunner()
     result = runner.invoke(cli, ["--version"])

@@ -17,15 +17,22 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
+import webbrowser
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 import qrcode
+from qrcode.image.svg import SvgPathImage
 
 from .constants import (
     CONFIG_DIR,
@@ -213,6 +220,81 @@ print(json.dumps({"error": "no_cookies"}))
 # ── QR Code terminal rendering ──────────────────────────────────────
 
 
+def _save_qr_svg(data: str, output_path: Path | None = None) -> tuple[Path, bool]:
+    """Save *data* as an SVG QR code and return (path, is_temporary)."""
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L)
+    qr.add_data(data)
+    qr.make(fit=True)
+    image = qr.make_image(image_factory=SvgPathImage)
+
+    is_temporary = output_path is None
+    if is_temporary:
+        fd, filename = tempfile.mkstemp(prefix="weibo-login-", suffix=".svg")
+        path = Path(filename)
+        write_path = path
+    else:
+        path = Path(output_path).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, filename = tempfile.mkstemp(
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=path.parent,
+        )
+        write_path = Path(filename)
+
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            image.save(stream)
+        if not is_temporary:
+            os.replace(write_path, path)
+    except BaseException:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            write_path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Failed to remove partial QR SVG")
+        raise
+
+    return path, is_temporary
+
+
+@contextmanager
+def _present_qr(
+    data: str,
+    output_path: Path | None = None,
+    *,
+    open_qrcode: bool = False,
+) -> Iterator[Path | None]:
+    """Display a terminal QR code and expose a scannable SVG fallback."""
+    _display_qr_in_terminal(data)
+    try:
+        path, is_temporary = _save_qr_svg(data, output_path)
+    except Exception:  # noqa: BLE001 - optional fallback must not abort QR login
+        print("\n⚠️  无法生成高清二维码文件，请尝试扫描终端二维码。")
+        yield None
+        return
+
+    try:
+        print(f"\n🖼️  高清二维码文件: {path}")
+        if open_qrcode:
+            try:
+                opened = webbrowser.open(path.as_uri())
+            except Exception:  # noqa: BLE001 - opening the fallback is best-effort
+                opened = False
+            if not opened:
+                print("⚠️  无法自动打开二维码文件，请使用上面的路径手动打开。")
+        yield path
+    finally:
+        if is_temporary:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                print("⚠️  无法删除临时二维码文件，请手动删除上方路径。")
+
+
 def _render_qr_half_blocks(matrix: list[list[bool]]) -> str:
     """Render QR matrix using Unicode half-block characters (▀▄█ and space)."""
     if not matrix:
@@ -281,10 +363,37 @@ def _display_qr_in_terminal(data: str) -> bool:
     return True
 
 
+def _raise_sanitized_http_error(action: str, error: httpx.HTTPError) -> None:
+    """Raise a user-safe HTTP error without exposing request URLs or tokens."""
+    response = getattr(error, "response", None)
+    status_code = response.status_code if response is not None else "unknown"
+    logger.warning("Failed to %s (HTTP status: %s)", action, status_code)
+    raise RuntimeError(f"Failed to {action}") from None
+
+
+@contextmanager
+def _suppress_http_client_info_logs() -> Iterator[None]:
+    """Prevent HTTP client request URLs from exposing short-lived QR tokens."""
+    loggers = [logging.getLogger("httpx"), logging.getLogger("httpcore")]
+    previous_levels = [client_logger.level for client_logger in loggers]
+    for client_logger in loggers:
+        if client_logger.level == logging.NOTSET or client_logger.level < logging.WARNING:
+            client_logger.setLevel(logging.WARNING)
+    try:
+        yield
+    finally:
+        for client_logger, previous_level in zip(loggers, previous_levels):
+            client_logger.setLevel(previous_level)
+
+
 # ── QR Login flow ───────────────────────────────────────────────────
 
 
-def qr_login() -> Credential:
+def qr_login(
+    *,
+    qr_output: Path | None = None,
+    open_qrcode: bool = False,
+) -> Credential:
     """Full QR code login flow for Weibo.
 
     1. Visit passport.weibo.com/sso/signin to get X-CSRF-TOKEN cookie
@@ -293,37 +402,43 @@ def qr_login() -> Credential:
     4. Poll /sso/v2/qrcode/check every 2s
     5. On success, follow crossdomain URL for session cookies
     """
-    with httpx.Client(
+    with _suppress_http_client_info_logs(), httpx.Client(
         base_url=PASSPORT_URL,
         headers=dict(PASSPORT_HEADERS),
         follow_redirects=True,
         timeout=httpx.Timeout(30),
-    ) as client:
+    ) as client, ExitStack() as stack:
         # Step 1: Get CSRF token by visiting login page
         logger.info("Getting CSRF token from login page...")
-        resp = client.get(
-            SSO_SIGNIN_URL,
-            params={
-                "entry": QR_ENTRY,
-                "source": QR_SOURCE,
-                "url": QR_REDIRECT_URL,
-            },
-        )
-        resp.raise_for_status()
+        try:
+            resp = client.get(
+                SSO_SIGNIN_URL,
+                params={
+                    "entry": QR_ENTRY,
+                    "source": QR_SOURCE,
+                    "url": QR_REDIRECT_URL,
+                },
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as error:
+            _raise_sanitized_http_error("load QR login page", error)
 
         csrf_token = client.cookies.get("X-CSRF-TOKEN")
         if not csrf_token:
             raise RuntimeError("Failed to obtain X-CSRF-TOKEN from passport.weibo.com")
 
-        logger.info("Got CSRF token: %s...", csrf_token[:20])
+        logger.info("Got CSRF token")
 
         # Update headers with CSRF token
         client.headers["x-csrf-token"] = csrf_token
 
         # Step 2: Get QR code
         logger.info("Requesting QR code...")
-        resp = client.get(QR_IMAGE_URL, params={"entry": QR_ENTRY, "size": "180"})
-        resp.raise_for_status()
+        try:
+            resp = client.get(QR_IMAGE_URL, params={"entry": QR_ENTRY, "size": "180"})
+            resp.raise_for_status()
+        except httpx.HTTPError as error:
+            _raise_sanitized_http_error("request QR code", error)
         qr_data = resp.json()
 
         if qr_data.get("retcode") != RETCODE_SUCCESS:
@@ -331,7 +446,7 @@ def qr_login() -> Credential:
 
         qrid = qr_data["data"]["qrid"]
         image_url = qr_data["data"]["image"]
-        logger.info("Got qrid: %s", qrid)
+        logger.info("Got QR code")
 
         # Step 3: Extract scan URL from image URL and render QR
         # The QR encodes: https://passport.weibo.cn/signin/qrcode/scan?qr={qrid}&...
@@ -341,9 +456,15 @@ def qr_login() -> Credential:
 
         print("\n📱 请使用 微博APP 扫描以下二维码登录:\n")
         print("   打开微博手机APP → 我的页面 → 扫一扫\n")
-        _display_qr_in_terminal(scan_url)
+        stack.enter_context(
+            _present_qr(
+                scan_url,
+                qr_output,
+                open_qrcode=open_qrcode,
+            )
+        )
         print(f"\n⏳ 等待扫码中... (超时: {POLL_TIMEOUT_S // 60} 分钟)")
-        print(f"   (QR ID: {qrid[:20]}...)\n")
+        print()
 
         # Step 4: Poll for scan status
         start_time = time.time()
@@ -399,7 +520,7 @@ def qr_login() -> Credential:
                                 for name, value in cross_client.cookies.items():
                                     cookies[name] = value
                         except Exception as e:
-                            logger.warning("Cross-domain follow failed: %s", e)
+                            logger.warning("Cross-domain follow failed (%s)", type(e).__name__)
 
                     if alt:
                         # alt parameter may need to be exchanged for final cookies
@@ -416,7 +537,7 @@ def qr_login() -> Credential:
                                 for name, value in alt_client.cookies.items():
                                     cookies[name] = value
                         except Exception as e:
-                            logger.warning("Alt token exchange failed: %s", e)
+                            logger.warning("Alt token exchange failed (%s)", type(e).__name__)
 
                     if not cookies:
                         raise RuntimeError("Login succeeded but no cookies were obtained")
@@ -439,6 +560,8 @@ def qr_login() -> Credential:
 
             except httpx.TimeoutException:
                 logger.debug("QR check timeout, retrying...")
+            except httpx.HTTPError as error:
+                _raise_sanitized_http_error("check QR login status", error)
             except QRExpiredError:
                 raise
 
